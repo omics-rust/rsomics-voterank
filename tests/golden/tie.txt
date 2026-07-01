@@ -1,0 +1,7 @@
+# two identical deg-3 stars; centers a and e tie on score, a first
+a b
+a c
+a d
+e f
+e g
+e h
