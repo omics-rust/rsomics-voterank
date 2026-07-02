@@ -13,6 +13,9 @@ const TIE: &str = include_str!("golden/tie.txt");
 const GNM_A: &str = include_str!("golden/gnm_a.txt");
 const GNM_B: &str = include_str!("golden/gnm_b.txt");
 const BA_250_4: &str = include_str!("golden/ba_250_4.txt");
+const SELFLOOP_TRIANGLE: &str = include_str!("golden/selfloop_triangle.txt");
+const SELFLOOP_SINGLE: &str = include_str!("golden/selfloop_single.txt");
+const SELFLOOP_STAR: &str = include_str!("golden/selfloop_star.txt");
 
 // A scale-free graph exercises the many near-tie score comparisons that only
 // agree with networkx when votes accumulate in G.edges() order (not per node).
@@ -102,6 +105,30 @@ fn determinism() {
     let a = voterank_from_edge_list(GNM_A, None);
     let b = voterank_from_edge_list(GNM_A, None);
     assert_eq!(a, b);
+}
+
+// networkx keeps self-loops: a self-looped node has degree 2 and votes for
+// itself, so it can be elected. Expected sequences regenerated from
+// networkx 3.6.1 `nx.voterank`.
+#[test]
+fn self_loop_node_is_elected() {
+    // nx.voterank(nx.Graph([('a','b'),('b','c'),('c','a'),('d','d')]))
+    //   == ['a', 'd', 'b']  — the self-looped d outranks b/c in round two.
+    assert_seq(
+        voterank_from_edge_list(SELFLOOP_TRIANGLE, None),
+        &["a", "d", "b"],
+    );
+}
+
+#[test]
+fn lone_self_loop_is_elected() {
+    // A single self-looped node has degree 2 and votes for itself.
+    assert_seq(voterank_from_edge_list(SELFLOOP_SINGLE, None), &["d"]);
+}
+
+#[test]
+fn self_loop_and_star() {
+    assert_seq(voterank_from_edge_list(SELFLOOP_STAR, None), &["a", "e"]);
 }
 
 #[test]

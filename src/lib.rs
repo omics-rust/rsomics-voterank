@@ -47,9 +47,10 @@ impl Graph {
 }
 
 /// Parse a whitespace-delimited `u v` edge list. `#` comments and blank lines
-/// are skipped, parallel edges deduplicated, and self-loops dropped — the
-/// simple undirected graph `nx.read_edgelist` builds, with node insertion order
-/// equal to first appearance in the file.
+/// are skipped and parallel edges deduplicated — the simple undirected graph
+/// `nx.read_edgelist` builds, with node insertion order equal to first
+/// appearance in the file. Self-loops are kept (as networkx does): a self-loop
+/// is stored once in the node's adjacency but counts twice toward its degree.
 pub fn parse_edge_list(input: &str) -> Graph {
     let mut g = Graph {
         idx_to_node: Vec::new(),
@@ -68,12 +69,11 @@ pub fn parse_edge_list(input: &str) -> Graph {
         };
         let ui = g.intern(u, &mut table);
         let vi = g.intern(v, &mut table);
-        if ui == vi {
-            continue;
-        }
         if !g.adj[ui].contains(&vi) {
             g.adj[ui].push(vi);
-            g.adj[vi].push(ui);
+            if ui != vi {
+                g.adj[vi].push(ui);
+            }
         }
     }
     g
@@ -90,25 +90,30 @@ pub fn voterank(g: &Graph, number_of_nodes: Option<usize>) -> Vec<usize> {
         _ => n,
     };
 
-    let total_degree: usize = g.adj.iter().map(Vec::len).sum();
+    // Votes accumulate in `G.edges()` order, each edge adding to both endpoints.
+    // Float summation is order-sensitive, so matching this exact order (not a
+    // per-node sum) is what keeps near-ties — and thus the ranking — value-exact.
+    // Yielding each edge from its lower-indexed endpoint reproduces networkx's
+    // node-order edge iteration; `v == u` admits a self-loop, yielded once at
+    // its node's position.
+    let mut edges_ordered: Vec<(usize, usize)> = Vec::new();
+    for u in 0..n {
+        for &v in &g.adj[u] {
+            if v >= u {
+                edges_ordered.push((u, v));
+            }
+        }
+    }
+
+    // Sum of degrees is 2·|E| with each edge counted once; a self-loop is one
+    // edge but contributes 2 to its node's degree, so this matches G.degree().
+    let total_degree = 2 * edges_ordered.len();
     let avg_degree = total_degree as f64 / n as f64;
     let decrement = 1.0 / avg_degree;
 
     let mut ability = vec![1.0f64; n];
     let mut score = vec![0.0f64; n];
     let mut seeds = Vec::with_capacity(rounds);
-
-    // Votes accumulate in `G.edges()` order, each edge adding to both endpoints.
-    // Float summation is order-sensitive, so matching this exact order (not a
-    // per-node sum) is what keeps near-ties — and thus the ranking — value-exact.
-    let mut edges_ordered: Vec<(usize, usize)> = Vec::with_capacity(total_degree / 2);
-    for u in 0..n {
-        for &v in &g.adj[u] {
-            if v > u {
-                edges_ordered.push((u, v));
-            }
-        }
-    }
 
     for _ in 0..rounds {
         score.iter_mut().for_each(|s| *s = 0.0);

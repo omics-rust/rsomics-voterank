@@ -1,0 +1,2 @@
+# a single self-looped node: degree 2, votes for itself, elected
+d d

@@ -17,7 +17,7 @@ pub const META: ToolMeta = ToolMeta {
 /// (`networkx.voterank`, Zhang et al. 2016).
 ///
 /// Reads an edge list (`u v` per line; `#` comments and blank lines skipped;
-/// string node names; parallel edges deduplicated and self-loops dropped).
+/// string node names; parallel edges deduplicated, self-loops kept).
 /// Output is the ordered list of elected seeds, one node label per line, most
 /// influential first. Only positively-voted nodes are returned.
 #[derive(Parser, Debug)]

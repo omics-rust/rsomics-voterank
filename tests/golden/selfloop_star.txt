@@ -1,0 +1,5 @@
+# degree-3 star centered on a (leaves b c d) plus a lone self-looped node e
+a b
+a c
+a d
+e e
