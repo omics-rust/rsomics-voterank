@@ -59,8 +59,9 @@ pub fn parse_edge_list(input: &str) -> Graph {
     let mut table = HashMap::new();
 
     for line in input.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
+        // nx.parse_edgelist strips a '#' comment anywhere in the line before tokenising.
+        let line = line.split('#').next().unwrap_or("").trim();
+        if line.is_empty() {
             continue;
         }
         let mut parts = line.split_whitespace();
@@ -152,4 +153,40 @@ pub fn voterank_from_edge_list(input: &str, number_of_nodes: Option<usize>) -> V
         .into_iter()
         .map(|i| g.idx_to_node[i].clone())
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn edges(g: &Graph) -> Vec<(String, String)> {
+        let mut out = Vec::new();
+        for u in 0..g.len() {
+            for &v in &g.adj[u] {
+                if v >= u {
+                    out.push((g.idx_to_node[u].clone(), g.idx_to_node[v].clone()));
+                }
+            }
+        }
+        out.sort();
+        out
+    }
+
+    #[test]
+    fn inline_hash_comment_matches_comment_free_graph() {
+        // "1 2#note" is edge (1,2), "0 #x" is a pure comment line: networkx
+        // truncates at the first '#' before tokenising either.
+        let with_comments = "0 1\n1 2#note\n2 3\n0 #x\n# whole line\n";
+        let clean = "0 1\n1 2\n2 3\n";
+
+        let g_commented = parse_edge_list(with_comments);
+        let g_clean = parse_edge_list(clean);
+
+        assert_eq!(edges(&g_commented), edges(&g_clean));
+        assert_eq!(g_commented.idx_to_node, g_clean.idx_to_node);
+        assert_eq!(
+            voterank_from_edge_list(with_comments, None),
+            voterank_from_edge_list(clean, None)
+        );
+    }
 }
